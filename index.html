@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tasman 番茄钟 · iOS 原型</title>
+  <meta name="theme-color" content="#171a17" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Tasman 番茄钟" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./app-icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./app-icon-180.png" />
+  <!--
+    Assumptions
+    - 交付形态：Flow demo 单机，用户已明确「要能点击」。
+    - 产品定位：Tasman 番茄钟，重点不是一个普通倒计时，而是根据任务、精力、干扰和复盘生成专注策略。
+    - 视觉方向：3 个方向来自不同设计哲学，覆盖专业信息架构、东方静心、生成式 AI 动势。
+    - 素材策略：不加入装饰性 stock photo；番茄钟核心信息来自 UI 数据、AI 推理和交互反馈。
+  -->
+  <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+  <style>
+    :root {
+      --page-bg: #e9ece8;
+      --ink: #171a17;
+      --muted: #6b7169;
+      --panel: rgba(255, 255, 255, 0.72);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 14%, rgba(241, 114, 76, 0.18), transparent 24%),
+        linear-gradient(135deg, #f4f1e8 0%, #dfe9e7 48%, #e7e1d7 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .prototype-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 460px) minmax(430px, 1fr);
+      gap: 44px;
+      align-items: center;
+      justify-content: center;
+      padding: 34px clamp(22px, 4vw, 72px);
+    }
+
+    .brief-panel {
+      max-width: 440px;
+    }
+
+    .kicker {
+      margin: 0 0 18px;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #59615b;
+    }
+
+    .brief-panel h1 {
+      margin: 0;
+      max-width: 420px;
+      font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+      font-size: 58px;
+      line-height: 0.96;
+      font-weight: 540;
+      letter-spacing: 0;
+      text-wrap: pretty;
+    }
+
+    .brief-panel p {
+      margin: 20px 0 0;
+      max-width: 380px;
+      color: #575d56;
+      font-size: 15px;
+      line-height: 1.72;
+    }
+
+    .direction-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .direction-button {
+      width: 100%;
+      min-height: 86px;
+      border: 1px solid rgba(31, 34, 30, 0.13);
+      background: rgba(255, 255, 255, 0.58);
+      color: #20231f;
+      border-radius: 8px;
+      padding: 14px 16px;
+      text-align: left;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 14px;
+      align-items: center;
+      transition: transform 180ms ease, background 180ms ease, border 180ms ease;
+      backdrop-filter: blur(18px);
+    }
+
+    .direction-button:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .direction-button.active {
+      background: #171a17;
+      color: #f7f4eb;
+      border-color: #171a17;
+    }
+
+    .direction-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .direction-copy strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 5px;
+      letter-spacing: 0;
+    }
+
+    .direction-copy span {
+      display: block;
+      font-size: 12px;
+      line-height: 1.45;
+      color: inherit;
+      opacity: 0.72;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .meta-tile {
+      min-height: 72px;
+      border-top: 1px solid rgba(23, 26, 23, 0.18);
+      padding-top: 10px;
+      color: #333932;
+    }
+
+    .meta-tile b {
+      display: block;
+      font-size: 18px;
+      font-weight: 650;
+      margin-bottom: 4px;
+    }
+
+    .meta-tile span {
+      font-size: 11px;
+      color: #6f766e;
+      line-height: 1.35;
+    }
+
+    .phone-stage {
+      display: grid;
+      place-items: center;
+      min-width: 430px;
+    }
+
+    .app-screen {
+      height: 764px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .screen-scroll {
+      height: 100%;
+      overflow: auto;
+      scrollbar-width: none;
+      padding-bottom: 86px;
+    }
+
+    .screen-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tabbar {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      height: 58px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      align-items: center;
+      z-index: 12;
+      border-radius: 26px;
+      backdrop-filter: blur(18px);
+    }
+
+    .tabbar button {
+      height: 42px;
+      border: 0;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      gap: 2px;
+      cursor: pointer;
+      color: inherit;
+      opacity: 0.62;
+    }
+
+    .tabbar button.active {
+      opacity: 1;
+    }
+
+    .tab-icon {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .tabbar small {
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .tap {
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .sheet-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      background: rgba(0, 0, 0, 0.18);
+      display: grid;
+      align-items: end;
+    }
+
+    .bottom-sheet {
+      margin: 0;
+      border-radius: 30px 30px 0 0;
+      padding: 18px 20px 28px;
+      min-height: 310px;
+      animation: slideUp 220ms ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(22px); opacity: 0.6; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .sheet-handle {
+      width: 44px;
+      height: 4px;
+      border-radius: 999px;
+      margin: 0 auto 18px;
+      background: currentColor;
+      opacity: 0.22;
+    }
+
+    @media (max-width: 960px) {
+      .prototype-shell {
+        grid-template-columns: 1fr;
+        align-items: start;
+        justify-items: center;
+      }
+
+      .brief-panel {
+        max-width: 620px;
+      }
+
+      .brief-panel h1 {
+        font-size: 44px;
+      }
+
+      .phone-stage {
+        min-width: 0;
+        transform: scale(0.9);
+        transform-origin: top center;
+        margin-bottom: -70px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useMemo, useState } = React;
+
+    const iosFrameStyles = {
+      wrapper: {
+        display: 'inline-block',
+        padding: 12,
+        background: '#000',
+        borderRadius: 60,
+        boxShadow: '0 0 0 2px #1f2937, 0 20px 60px rgba(0,0,0,0.3)',
+        position: 'relative',
+      },
+      screen: {
+        position: 'relative',
+        borderRadius: 48,
+        overflow: 'hidden',
+        background: '#fff',
+      },
+      statusBar: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 54,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 32px 0 32px',
+        fontSize: 16,
+        fontWeight: 600,
+        fontFamily: '-apple-system, "SF Pro Text", sans-serif',
+        zIndex: 20,
+        pointerEvents: 'none',
+      },
+      dynamicIsland: {
+        position: 'absolute',
+        top: 12,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 124,
+        height: 36,
+        background: '#000',
+        borderRadius: 999,
+        zIndex: 30,
+      },
+      statusIcons: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+      },
+      signalIcon: {
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 2,
+        height: 12,
+      },
+      signalBar: {
+        width: 3,
+        background: 'currentColor',
+        borderRadius: 1,
+      },
+      batteryIcon: {
+        width: 26,
+        height: 12,
+        border: '1.5px solid currentColor',
+        borderRadius: 3,
+        padding: 1,
+        position: 'relative',
+        opacity: 0.8,
+      },
+      batteryCap: {
+        position: 'absolute',
+        top: 3,
+        right: -3,
+        width: 2,
+        height: 6,
+        background: 'currentColor',
+        borderRadius: '0 1px 1px 0',
+      },
+      content: {
+        position: 'absolute',
+        top: 54,
+        left: 0,
+        right: 0,
+        bottom: 34,
+        overflow: 'auto',
+      },
+      homeIndicator: {
+        position: 'absolute',
+        bottom: 10,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 140,
+        height: 5,
+        background: 'rgba(0,0,0,0.3)',
+        borderRadius: 999,
+        zIndex: 10,
+      },
+      homeIndicatorDark: {
+        background: 'rgba(255,255,255,0.5)',
+      },
+    };
+
+    function IosFrame({
+      children,
+      width = 393,
+      height = 852,
+      time = '9:41',
+      battery = 88,
+      darkMode = false,
+      showStatusBar = true,
+      showDynamicIsland = true,
+      showHomeIndicator = true,
+    }) {
+      const textColor = darkMode ? '#fff' : '#000';
+
+      return (
+        <div style={iosFrameStyles.wrapper}>
+          <div style={{
+            ...iosFrameStyles.screen,
+            width,
+            height,
+            background: darkMode ? '#000' : '#fff',
+          }}>
+            {showStatusBar && (
+              <div style={{ ...iosFrameStyles.statusBar, color: textColor }}>
+                <span>{time}</span>
+                <div style={iosFrameStyles.statusIcons}>
+                  <div style={iosFrameStyles.signalIcon}>
+                    <div style={{ ...iosFrameStyles.signalBar, height: 4 }} />
+                    <div style={{ ...iosFrameStyles.signalBar, height: 6 }} />
+                    <div style={{ ...iosFrameStyles.signalBar, height: 9 }} />
+                    <div style={{ ...iosFrameStyles.signalBar, height: 11 }} />
+                  </div>
+                  <svg width="16" height="12" viewBox="0 0 16 12" fill="none" style={{ color: textColor }}>
+                    <path d="M8 11.5a1 1 0 100-2 1 1 0 000 2z" fill="currentColor" />
+                    <path d="M3 7.5a7 7 0 0110 0" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+                    <path d="M1 4.5a11 11 0 0114 0" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" opacity="0.7" />
+                  </svg>
+                  <div style={iosFrameStyles.batteryIcon}>
+                    <div style={{
+                      width: `${battery}%`,
+                      height: '100%',
+                      background: 'currentColor',
+                      borderRadius: 1,
+                      opacity: 0.9,
+                    }} />
+                    <div style={iosFrameStyles.batteryCap} />
+                  </div>
+                </div>
+              </div>
+            )}
+            {showDynamicIsland && <div style={iosFrameStyles.dynamicIsland} />}
+            <div style={iosFrameStyles.content}>{children}</div>
+            {showHomeIndicator && (
+              <div style={{
+                ...iosFrameStyles.homeIndicator,
+                ...(darkMode ? iosFrameStyles.homeIndicatorDark : {}),
+              }} />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const directions = {
+      aicher: {
+        id: 'aicher',
+        label: 'A',
+        name: 'Otl Aicher 式信息建筑',
+        subtitle: '为高压工作流设计的 AI 专注驾驶舱',
+        philosophy: '理性、网格、强可读性；适合把 AI 判断、任务负荷和时间策略变得可信。',
+        mark: '#0f766e',
+        dark: false,
+        stats: ['72%', '4/7', '2m'],
+      },
+      hara: {
+        id: 'hara',
+        label: 'B',
+        name: 'Kenya Hara 式静心留白',
+        subtitle: '把番茄钟做成安静、呼吸感强的专注仪式',
+        philosophy: '留白、温度、轻触反馈；适合低焦虑、自我照护、长期习惯养成。',
+        mark: '#b55335',
+        dark: false,
+        stats: ['轻', '25', '3'],
+      },
+      maeda: {
+        id: 'maeda',
+        label: 'C',
+        name: 'John Maeda 式生成动势',
+        subtitle: 'AI 像实时副驾，持续重排注意力场',
+        philosophy: '生成纹理、即时信号、动势层次；适合强调智能感和未来感的产品演示。',
+        mark: '#c9ff4a',
+        dark: true,
+        stats: ['91', 'AI', '5'],
+      },
+    };
+
+    const taskData = [
+      { name: '整理 iOS 原型反馈', depth: 86, eta: '25m', risk: '上下文切换高' },
+      { name: '写发布页价值主张', depth: 62, eta: '18m', risk: '可并入浅专注' },
+      { name: '回复客户排期', depth: 38, eta: '8m', risk: '建议休息后处理' },
+    ];
+
+    function Icon({ type }) {
+      if (type === 'focus') {
+        return <svg className="tab-icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>;
+      }
+      if (type === 'plan') {
+        return <svg className="tab-icon" viewBox="0 0 24 24" fill="none"><path d="M6 7h12M6 12h9M6 17h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
+      }
+      return <svg className="tab-icon" viewBox="0 0 24 24" fill="none"><path d="M5 17l4-5 4 3 6-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 20h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>;
+    }
+
+    function TabBar({ theme, active, onTab }) {
+      const isDark = theme.id === 'maeda';
+      return (
+        <div className="tabbar" style={{
+          background: isDark ? 'rgba(12, 15, 15, 0.72)' : 'rgba(255, 255, 255, 0.76)',
+          color: isDark ? '#eaf7ef' : '#1c211c',
+          border: isDark ? '1px solid rgba(201,255,74,0.18)' : '1px solid rgba(0,0,0,0.08)',
+          boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.34)' : '0 16px 34px rgba(52, 44, 33, 0.12)',
+        }}>
+          {[
+            ['focus', '专注'],
+            ['plan', '计划'],
+            ['insight', '复盘'],
+          ].map(([key, label]) => (
+            <button key={key} className={active === key ? 'active' : ''} onClick={() => onTab(key)} aria-label={label}>
+              <Icon type={key} />
+              <small>{label}</small>
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    function TimerRing({ theme, running, onToggle }) {
+      const percent = running ? 67 : 61;
+      const ringColor = theme.id === 'maeda' ? '#c9ff4a' : theme.id === 'hara' ? '#b55335' : '#0f766e';
+      const base = theme.id === 'maeda' ? 'rgba(255,255,255,0.12)' : theme.id === 'hara' ? '#eadfd2' : '#dae4dd';
+      return (
+        <button
+          className="tap"
+          onClick={onToggle}
+          aria-label={running ? '暂停专注' : '开始专注'}
+          style={{
+            border: 0,
+            background: 'transparent',
+            padding: 0,
+            width: theme.id === 'hara' ? 248 : 238,
+            height: theme.id === 'hara' ? 248 : 238,
+            borderRadius: '50%',
+            display: 'grid',
+            placeItems: 'center',
+            margin: theme.id === 'aicher' ? '12px auto 8px' : '20px auto 16px',
+            position: 'relative',
+            color: theme.id === 'maeda' ? '#f1fff2' : '#1b201b',
+          }}
+        >
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: `conic-gradient(${ringColor} ${percent * 3.6}deg, ${base} 0deg)`,
+            boxShadow: theme.id === 'maeda' ? '0 0 46px rgba(201,255,74,0.22)' : 'none',
+          }} />
+          <div style={{
+            position: 'absolute',
+            inset: theme.id === 'hara' ? 16 : 14,
+            borderRadius: '50%',
+            background: theme.id === 'maeda'
+              ? 'radial-gradient(circle, #121716 0%, #070909 74%)'
+              : theme.id === 'hara'
+                ? '#fbf5ea'
+                : '#f6f8f4',
+            border: theme.id === 'hara' ? '1px solid rgba(181,83,53,0.18)' : '0',
+          }} />
+          {theme.id === 'maeda' && (
+            <div style={{
+              position: 'absolute',
+              inset: 28,
+              borderRadius: '50%',
+              background: 'repeating-conic-gradient(from 20deg, rgba(201,255,74,0.12) 0deg 4deg, transparent 4deg 15deg)',
+              animation: running ? 'spin 12s linear infinite' : 'none',
+            }} />
+          )}
+          <div style={{ position: 'relative', textAlign: 'center' }}>
+            <div style={{
+              fontFamily: theme.id === 'hara' ? 'Georgia, serif' : '"SF Mono", ui-monospace, monospace',
+              fontSize: theme.id === 'hara' ? 50 : 46,
+              fontWeight: theme.id === 'hara' ? 500 : 650,
+              lineHeight: 1,
+              letterSpacing: 0,
+            }}>{running ? '17:22' : '25:00'}</div>
+            <div style={{
+              marginTop: 10,
+              fontSize: 12,
+              color: theme.id === 'maeda' ? 'rgba(241,255,242,0.7)' : '#687066',
+            }}>{running ? '轻点暂停' : '轻点开始'}</div>
+          </div>
+        </button>
+      );
+    }
+
+    function AicherFocus({ running, setRunning, openSheet }) {
+      return (
+        <div className="screen-scroll" style={{ padding: '22px 22px 90px', background: '#f6f8f4' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 12, color: '#64716c', marginBottom: 6 }}>今日策略</div>
+              <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.05, letterSpacing: 0 }}>深专注优先</h2>
+            </div>
+            <button className="tap" onClick={openSheet} style={{ border: '1px solid #bbc9c3', background: '#fff', borderRadius: 20, padding: '9px 12px', fontSize: 12 }}>AI 调度</button>
+          </div>
+          <TimerRing theme={directions.aicher} running={running} onToggle={() => setRunning(!running)} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              ['负荷', '72%', '#0f766e'],
+              ['干扰窗', '2m', '#56665f'],
+              ['恢复', '11:10', '#b45332'],
+            ].map(([k, v, c]) => (
+              <div key={k} style={{ background: '#ffffff', border: '1px solid #dfe6e2', padding: 12, minHeight: 76 }}>
+                <div style={{ fontSize: 11, color: '#748078' }}>{k}</div>
+                <div style={{ marginTop: 8, color: c, fontSize: 22, fontWeight: 700 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 14, background: '#10231e', color: '#eef7ee', padding: 16 }}>
+            <div style={{ fontSize: 12, opacity: 0.72 }}>AI 推理片段</div>
+            <p style={{ margin: '8px 0 0', lineHeight: 1.55, fontSize: 14 }}>你在 10:00 前完成复杂判断的概率最高。我已把「回复排期」移到休息后，避免打断当前原型任务。</p>
+          </div>
+          <TaskQueue variant="aicher" />
+        </div>
+      );
+    }
+
+    function HaraFocus({ running, setRunning, openSheet }) {
+      return (
+        <div className="screen-scroll" style={{
+          padding: '24px 24px 90px',
+          background: '#fbf5ea',
+          backgroundImage: 'linear-gradient(rgba(181,83,53,0.035) 1px, transparent 1px)',
+          backgroundSize: '100% 28px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#483b31' }}>一段干净时间</div>
+            <button onClick={openSheet} className="tap" style={{ border: '0', background: '#efe2d0', color: '#7e3e2a', borderRadius: 18, padding: '9px 12px', fontSize: 12 }}>问 AI</button>
+          </div>
+          <TimerRing theme={directions.hara} running={running} onToggle={() => setRunning(!running)} />
+          <div style={{ textAlign: 'center', color: '#725f51', fontSize: 14, lineHeight: 1.8 }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: '#2d271f' }}>先做最重的一口</div>
+            <div>当前任务会在第 2 个番茄钟进入顺流。</div>
+          </div>
+          <div style={{ marginTop: 24, padding: '18px 0', borderTop: '1px solid #e5d6c5', borderBottom: '1px solid #e5d6c5' }}>
+            {[
+              ['呼吸', '4-7-8', '开始前 42 秒'],
+              ['收束', '仅保留 1 个任务', '减少选择成本'],
+              ['休息', '窗边走动', '恢复眼压'],
+            ].map(([a, b, c]) => (
+              <div key={a} style={{ display: 'grid', gridTemplateColumns: '64px 1fr', padding: '10px 0', color: '#4b4036' }}>
+                <div style={{ fontSize: 12, color: '#9a7b68' }}>{a}</div>
+                <div>
+                  <div style={{ fontSize: 15 }}>{b}</div>
+                  <div style={{ fontSize: 12, color: '#8a7868', marginTop: 3 }}>{c}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <TaskQueue variant="hara" />
+        </div>
+      );
+    }
+
+    function MaedaFocus({ running, setRunning, openSheet }) {
+      return (
+        <div className="screen-scroll" style={{
+          padding: '22px 20px 90px',
+          background: '#070909',
+          color: '#edf8ee',
+          position: 'relative',
+        }}>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            opacity: 0.42,
+            backgroundImage: 'linear-gradient(90deg, rgba(201,255,74,0.08) 1px, transparent 1px), linear-gradient(rgba(201,255,74,0.08) 1px, transparent 1px)',
+            backgroundSize: '26px 26px',
+            pointerEvents: 'none',
+          }} />
+          <div style={{ position: 'relative' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'start' }}>
+              <div>
+                <div style={{ color: '#c9ff4a', fontSize: 12, letterSpacing: '0.12em' }}>LIVE ATTENTION FIELD</div>
+                <h2 style={{ margin: '7px 0 0', fontSize: 28, lineHeight: 1.02, letterSpacing: 0 }}>AI 正在重排噪声</h2>
+              </div>
+              <button onClick={openSheet} className="tap" style={{ border: '1px solid rgba(201,255,74,0.36)', background: 'rgba(201,255,74,0.12)', color: '#c9ff4a', borderRadius: 18, padding: '9px 12px', fontSize: 12 }}>打开场</button>
+            </div>
+            <TimerRing theme={directions.maeda} running={running} onToggle={() => setRunning(!running)} />
+            <div style={{ display: 'grid', gap: 10 }}>
+              {[
+                ['task.vector', '整理 iOS 原型反馈', '0.91'],
+                ['noise.filter', '消息通知降权', '0.76'],
+                ['energy.curve', '第 18 分钟提醒收尾', '0.84'],
+              ].map(([k, v, n]) => (
+                <div key={k} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '88px 1fr 44px',
+                  gap: 10,
+                  alignItems: 'center',
+                  padding: '12px 11px',
+                  background: 'rgba(255,255,255,0.055)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}>
+                  <div style={{ color: '#c9ff4a', fontSize: 10, fontFamily: 'ui-monospace, monospace' }}>{k}</div>
+                  <div style={{ fontSize: 13 }}>{v}</div>
+                  <div style={{ color: '#ff7b61', fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{n}</div>
+                </div>
+              ))}
+            </div>
+            <TaskQueue variant="maeda" />
+          </div>
+        </div>
+      );
+    }
+
+    function TaskQueue({ variant }) {
+      const colors = {
+        aicher: { bg: '#fff', border: '#dfe6e2', ink: '#1d241f', bar: '#0f766e', muted: '#68746d' },
+        hara: { bg: 'rgba(255,255,255,0.34)', border: '#e5d6c5', ink: '#3d3229', bar: '#b55335', muted: '#897566' },
+        maeda: { bg: 'rgba(255,255,255,0.045)', border: 'rgba(255,255,255,0.1)', ink: '#edf8ee', bar: '#c9ff4a', muted: 'rgba(237,248,238,0.58)' },
+      }[variant];
+
+      return (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ fontSize: 12, color: colors.muted, marginBottom: 10 }}>AI 排序队列</div>
+          <div style={{ display: 'grid', gap: 9 }}>
+            {taskData.map((task) => (
+              <div className="tap" key={task.name} style={{
+                background: colors.bg,
+                border: `1px solid ${colors.border}`,
+                padding: 13,
+                color: colors.ink,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 14 }}>
+                  <span>{task.name}</span>
+                  <b style={{ fontSize: 12 }}>{task.eta}</b>
+                </div>
+                <div style={{ marginTop: 10, height: 4, background: variant === 'maeda' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }}>
+                  <div style={{ width: `${task.depth}%`, height: '100%', background: colors.bar }} />
+                </div>
+                <div style={{ marginTop: 8, fontSize: 11, color: colors.muted }}>{task.risk}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function PlanScreen({ theme, openSheet }) {
+      const isDark = theme.id === 'maeda';
+      const palette = isDark
+        ? { bg: '#070909', ink: '#edf8ee', muted: 'rgba(237,248,238,0.58)', panel: 'rgba(255,255,255,0.055)', border: 'rgba(255,255,255,0.12)', accent: '#c9ff4a' }
+        : theme.id === 'hara'
+          ? { bg: '#fbf5ea', ink: '#352d25', muted: '#8a7868', panel: 'rgba(255,255,255,0.38)', border: '#e5d6c5', accent: '#b55335' }
+          : { bg: '#f6f8f4', ink: '#1b211d', muted: '#6b756e', panel: '#fff', border: '#dfe6e2', accent: '#0f766e' };
+
+      return (
+        <div className="screen-scroll" style={{ padding: '24px 20px 90px', background: palette.bg, color: palette.ink }}>
+          <h2 style={{ margin: 0, fontSize: theme.id === 'hara' ? 28 : 27, fontFamily: theme.id === 'hara' ? 'Georgia, serif' : 'inherit', letterSpacing: 0 }}>今天的番茄编排</h2>
+          <p style={{ margin: '8px 0 18px', color: palette.muted, fontSize: 13, lineHeight: 1.55 }}>AI 已按认知负荷和截止时间生成 4 段专注，点击可重新分配。</p>
+          <button onClick={openSheet} className="tap" style={{
+            width: '100%',
+            border: `1px solid ${palette.border}`,
+            background: theme.id === 'maeda' ? 'rgba(201,255,74,0.12)' : palette.panel,
+            color: theme.id === 'maeda' ? '#c9ff4a' : palette.ink,
+            padding: 14,
+            borderRadius: theme.id === 'aicher' ? 0 : 16,
+            marginBottom: 16,
+            textAlign: 'left',
+          }}>
+            <b>让 AI 重新安排下午</b>
+            <div style={{ marginTop: 4, fontSize: 12, opacity: 0.68 }}>检测到 14:30 有会议，建议把深度任务前移。</div>
+          </button>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {[
+              ['09:40', '原型反馈整合', '深专注', '25m'],
+              ['10:15', '发布文案初稿', '创造', '25m'],
+              ['11:05', '客户排期回复', '浅专注', '15m'],
+              ['15:20', '复盘与归档', '收束', '10m'],
+            ].map(([time, title, tag, len], index) => (
+              <div key={title} className="tap" style={{
+                display: 'grid',
+                gridTemplateColumns: '58px 1fr auto',
+                gap: 12,
+                alignItems: 'center',
+                padding: theme.id === 'hara' ? '14px 0' : 14,
+                borderBottom: theme.id === 'hara' ? `1px solid ${palette.border}` : '0',
+                background: theme.id === 'hara' ? 'transparent' : palette.panel,
+                border: theme.id === 'hara' ? '0' : `1px solid ${palette.border}`,
+              }}>
+                <div style={{ color: palette.accent, fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{time}</div>
+                <div>
+                  <div style={{ fontSize: 15 }}>{title}</div>
+                  <div style={{ fontSize: 11, color: palette.muted, marginTop: 4 }}>{tag} · AI 置信度 {92 - index * 7}%</div>
+                </div>
+                <div style={{ fontSize: 12, color: palette.muted }}>{len}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function InsightScreen({ theme }) {
+      const isDark = theme.id === 'maeda';
+      const palette = isDark
+        ? { bg: '#070909', ink: '#edf8ee', muted: 'rgba(237,248,238,0.58)', panel: 'rgba(255,255,255,0.055)', border: 'rgba(255,255,255,0.12)', accent: '#c9ff4a', warm: '#ff7b61' }
+        : theme.id === 'hara'
+          ? { bg: '#fbf5ea', ink: '#352d25', muted: '#8a7868', panel: 'rgba(255,255,255,0.38)', border: '#e5d6c5', accent: '#b55335', warm: '#8f6248' }
+          : { bg: '#f6f8f4', ink: '#1b211d', muted: '#6b756e', panel: '#fff', border: '#dfe6e2', accent: '#0f766e', warm: '#b45332' };
+
+      return (
+        <div className="screen-scroll" style={{ padding: '24px 20px 90px', background: palette.bg, color: palette.ink }}>
+          <h2 style={{ margin: 0, fontSize: theme.id === 'hara' ? 29 : 27, fontFamily: theme.id === 'hara' ? 'Georgia, serif' : 'inherit', letterSpacing: 0 }}>专注复盘</h2>
+          <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[
+              ['深专注', '3.2h'],
+              ['打断', '-31%'],
+              ['最佳时段', '9-11'],
+              ['恢复质量', '82'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ background: palette.panel, border: `1px solid ${palette.border}`, padding: 14, minHeight: 86 }}>
+                <div style={{ color: palette.muted, fontSize: 11 }}>{k}</div>
+                <div style={{ marginTop: 10, fontSize: 27, color: k === '打断' ? palette.warm : palette.accent, fontWeight: theme.id === 'hara' ? 400 : 700 }}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 16, background: palette.panel, border: `1px solid ${palette.border}`, padding: 16 }}>
+            <div style={{ color: palette.muted, fontSize: 12, marginBottom: 14 }}>AI 今天学到的模式</div>
+            {[
+              ['会议前 18 分钟不要开新番茄', 82],
+              ['写作任务在第二个番茄钟质量更高', 74],
+              ['手机放远后，恢复速度提升明显', 66],
+            ].map(([label, value]) => (
+              <div key={label} style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
+                  <span>{label}</span>
+                  <span style={{ color: palette.muted }}>{value}%</span>
+                </div>
+                <div style={{ height: 4, marginTop: 8, background: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }}>
+                  <div style={{ height: '100%', width: `${value}%`, background: palette.accent }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 16, padding: theme.id === 'hara' ? '16px 0' : 16, borderTop: theme.id === 'hara' ? `1px solid ${palette.border}` : '0', color: palette.muted, fontSize: 13, lineHeight: 1.65 }}>
+            明天建议：把最难的判断型任务放在 09:35，并在第一个休息时处理通信。
+          </div>
+        </div>
+      );
+    }
+
+    function AiSheet({ theme, onClose, onApply }) {
+      const isDark = theme.id === 'maeda';
+      const style = isDark
+        ? { bg: '#101413', ink: '#edf8ee', muted: 'rgba(237,248,238,0.62)', border: 'rgba(255,255,255,0.12)', accent: '#c9ff4a' }
+        : theme.id === 'hara'
+          ? { bg: '#fbf5ea', ink: '#352d25', muted: '#8a7868', border: '#e1d0be', accent: '#b55335' }
+          : { bg: '#ffffff', ink: '#18211d', muted: '#66746d', border: '#dbe5df', accent: '#0f766e' };
+
+      return (
+        <div className="sheet-backdrop" onClick={onClose}>
+          <div className="bottom-sheet" onClick={(event) => event.stopPropagation()} style={{ background: style.bg, color: style.ink, borderTop: `1px solid ${style.border}` }}>
+            <div className="sheet-handle" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, alignItems: 'start' }}>
+              <div>
+                <div style={{ color: style.accent, fontSize: 12, marginBottom: 7 }}>AI 建议</div>
+                <h3 style={{ margin: 0, fontSize: 22, letterSpacing: 0, fontFamily: theme.id === 'hara' ? 'Georgia, serif' : 'inherit' }}>把本轮缩短到 22 分钟</h3>
+              </div>
+              <button className="tap" onClick={onClose} style={{ border: 0, background: 'transparent', color: style.muted, fontSize: 22, lineHeight: 1 }}>×</button>
+            </div>
+            <p style={{ color: style.muted, lineHeight: 1.58, fontSize: 13, margin: '12px 0 16px' }}>系统检测到你刚从会议回来，认知启动会慢 3 分钟。先用 22 分钟完成「反馈归类」，下一轮再做结构判断。</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[
+                ['预计完成', '82%'],
+                ['打断风险', '低'],
+                ['恢复成本', '6m'],
+                ['推荐模式', '深专注'],
+              ].map(([k, v]) => (
+                <div key={k} style={{ border: `1px solid ${style.border}`, padding: 12 }}>
+                  <div style={{ color: style.muted, fontSize: 11 }}>{k}</div>
+                  <div style={{ marginTop: 7, fontSize: 19, color: style.accent }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <button className="tap" onClick={onApply} style={{
+              width: '100%',
+              height: 48,
+              marginTop: 16,
+              border: 0,
+              background: style.accent,
+              color: theme.id === 'maeda' ? '#09100c' : '#fff',
+              borderRadius: theme.id === 'aicher' ? 0 : 18,
+              fontWeight: 700,
+            }}>应用建议并开始</button>
+          </div>
+        </div>
+      );
+    }
+
+    function PhoneApp({ theme }) {
+      const [tab, setTab] = useState('focus');
+      const [running, setRunning] = useState(false);
+      const [sheet, setSheet] = useState(false);
+
+      const openSheet = () => setSheet(true);
+      const applySheet = () => {
+        setSheet(false);
+        setRunning(true);
+        setTab('focus');
+      };
+
+      let screen;
+      if (tab === 'plan') screen = <PlanScreen theme={theme} openSheet={openSheet} />;
+      else if (tab === 'insight') screen = <InsightScreen theme={theme} />;
+      else if (theme.id === 'hara') screen = <HaraFocus running={running} setRunning={setRunning} openSheet={openSheet} />;
+      else if (theme.id === 'maeda') screen = <MaedaFocus running={running} setRunning={setRunning} openSheet={openSheet} />;
+      else screen = <AicherFocus running={running} setRunning={setRunning} openSheet={openSheet} />;
+
+      return (
+        <IosFrame darkMode={theme.dark} battery={theme.id === 'maeda' ? 91 : 88}>
+          <div className="app-screen">
+            {screen}
+            <TabBar theme={theme} active={tab} onTab={setTab} />
+            {sheet && <AiSheet theme={theme} onClose={() => setSheet(false)} onApply={applySheet} />}
+          </div>
+        </IosFrame>
+      );
+    }
+
+    function App() {
+      const [direction, setDirection] = useState('aicher');
+      const theme = directions[direction];
+      const directionList = useMemo(() => Object.values(directions), []);
+
+      return (
+        <main className="prototype-shell">
+          <section className="brief-panel">
+            <p className="kicker">Tasman Pomodoro · iOS Prototype</p>
+            <h1>Tasman 番茄钟，三种可点击视觉方向。</h1>
+            <p>{theme.philosophy}</p>
+            <div className="direction-list" role="tablist" aria-label="视觉方向">
+              {directionList.map((item) => (
+                <button
+                  key={item.id}
+                  className={`direction-button ${direction === item.id ? 'active' : ''}`}
+                  onClick={() => setDirection(item.id)}
+                  role="tab"
+                  aria-selected={direction === item.id}
+                >
+                  <span className="direction-mark" style={{ background: item.mark, color: item.id === 'maeda' ? '#111' : '#fff' }}>{item.label}</span>
+                  <span className="direction-copy">
+                    <strong>{item.name}</strong>
+                    <span>{item.subtitle}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="meta-grid">
+              <div className="meta-tile"><b>{theme.stats[0]}</b><span>AI 判断外显</span></div>
+              <div className="meta-tile"><b>{theme.stats[1]}</b><span>番茄节奏标记</span></div>
+              <div className="meta-tile"><b>{theme.stats[2]}</b><span>可点击入口</span></div>
+            </div>
+          </section>
+          <section className="phone-stage" aria-label="iPhone 原型">
+            <PhoneApp key={direction} theme={theme} />
+          </section>
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+    if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
