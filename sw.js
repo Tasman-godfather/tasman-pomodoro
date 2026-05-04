@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tasman-pomodoro-prototype-v1';
+const CACHE_NAME = 'tasman-pomodoro-prototype-v2';
 const APP_SHELL = [
   './index.html',
   './manifest.webmanifest',

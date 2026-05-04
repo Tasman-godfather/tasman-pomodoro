@@ -306,7 +306,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useMemo, useState } = React;
+    const { useEffect, useMemo, useState } = React;
 
     const iosFrameStyles = {
       wrapper: {
@@ -542,13 +542,24 @@
       );
     }
 
-    function TimerRing({ theme, running, onToggle }) {
-      const percent = running ? 67 : 61;
+    const DEFAULT_SESSION_SECONDS = 25 * 60;
+    const AI_SESSION_SECONDS = 22 * 60;
+
+    function formatDuration(seconds) {
+      const safeSeconds = Math.max(0, seconds);
+      const minutes = Math.floor(safeSeconds / 60);
+      const rest = safeSeconds % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+    }
+
+    function TimerRing({ theme, running, remainingSeconds, totalSeconds, onToggle }) {
+      const percent = totalSeconds > 0 ? Math.max(0, Math.min(100, (remainingSeconds / totalSeconds) * 100)) : 0;
       const ringColor = theme.id === 'maeda' ? '#c9ff4a' : theme.id === 'hara' ? '#b55335' : '#0f766e';
       const base = theme.id === 'maeda' ? 'rgba(255,255,255,0.12)' : theme.id === 'hara' ? '#eadfd2' : '#dae4dd';
+      const hint = remainingSeconds === 0 ? '本轮完成' : running ? '轻点暂停' : remainingSeconds < totalSeconds ? '继续专注' : '轻点开始';
       return (
         <button
-          className="tap"
+          className="tap timer-button"
           onClick={onToggle}
           aria-label={running ? '暂停专注' : '开始专注'}
           style={{
@@ -599,18 +610,18 @@
               fontWeight: theme.id === 'hara' ? 500 : 650,
               lineHeight: 1,
               letterSpacing: 0,
-            }}>{running ? '17:22' : '25:00'}</div>
+            }}>{formatDuration(remainingSeconds)}</div>
             <div style={{
               marginTop: 10,
               fontSize: 12,
               color: theme.id === 'maeda' ? 'rgba(241,255,242,0.7)' : '#687066',
-            }}>{running ? '轻点暂停' : '轻点开始'}</div>
+            }}>{hint}</div>
           </div>
         </button>
       );
     }
 
-    function AicherFocus({ running, setRunning, openSheet }) {
+    function AicherFocus({ running, remainingSeconds, totalSeconds, onTimerToggle, openSheet }) {
       return (
         <div className="screen-scroll" style={{ padding: '22px 22px 90px', background: '#f6f8f4' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: 16 }}>
@@ -620,7 +631,7 @@
             </div>
             <button className="tap" onClick={openSheet} style={{ border: '1px solid #bbc9c3', background: '#fff', borderRadius: 20, padding: '9px 12px', fontSize: 12 }}>AI 调度</button>
           </div>
-          <TimerRing theme={directions.aicher} running={running} onToggle={() => setRunning(!running)} />
+          <TimerRing theme={directions.aicher} running={running} remainingSeconds={remainingSeconds} totalSeconds={totalSeconds} onToggle={onTimerToggle} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {[
               ['负荷', '72%', '#0f766e'],
@@ -642,7 +653,7 @@
       );
     }
 
-    function HaraFocus({ running, setRunning, openSheet }) {
+    function HaraFocus({ running, remainingSeconds, totalSeconds, onTimerToggle, openSheet }) {
       return (
         <div className="screen-scroll" style={{
           padding: '24px 24px 90px',
@@ -654,7 +665,7 @@
             <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#483b31' }}>一段干净时间</div>
             <button onClick={openSheet} className="tap" style={{ border: '0', background: '#efe2d0', color: '#7e3e2a', borderRadius: 18, padding: '9px 12px', fontSize: 12 }}>问 AI</button>
           </div>
-          <TimerRing theme={directions.hara} running={running} onToggle={() => setRunning(!running)} />
+          <TimerRing theme={directions.hara} running={running} remainingSeconds={remainingSeconds} totalSeconds={totalSeconds} onToggle={onTimerToggle} />
           <div style={{ textAlign: 'center', color: '#725f51', fontSize: 14, lineHeight: 1.8 }}>
             <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, color: '#2d271f' }}>先做最重的一口</div>
             <div>当前任务会在第 2 个番茄钟进入顺流。</div>
@@ -679,7 +690,7 @@
       );
     }
 
-    function MaedaFocus({ running, setRunning, openSheet }) {
+    function MaedaFocus({ running, remainingSeconds, totalSeconds, onTimerToggle, openSheet }) {
       return (
         <div className="screen-scroll" style={{
           padding: '22px 20px 90px',
@@ -704,7 +715,7 @@
               </div>
               <button onClick={openSheet} className="tap" style={{ border: '1px solid rgba(201,255,74,0.36)', background: 'rgba(201,255,74,0.12)', color: '#c9ff4a', borderRadius: 18, padding: '9px 12px', fontSize: 12 }}>打开场</button>
             </div>
-            <TimerRing theme={directions.maeda} running={running} onToggle={() => setRunning(!running)} />
+            <TimerRing theme={directions.maeda} running={running} remainingSeconds={remainingSeconds} totalSeconds={totalSeconds} onToggle={onTimerToggle} />
             <div style={{ display: 'grid', gap: 10 }}>
               {[
                 ['task.vector', '整理 iOS 原型反馈', '0.91'],
@@ -920,21 +931,53 @@
     function PhoneApp({ theme }) {
       const [tab, setTab] = useState('focus');
       const [running, setRunning] = useState(false);
+      const [totalSeconds, setTotalSeconds] = useState(DEFAULT_SESSION_SECONDS);
+      const [remainingSeconds, setRemainingSeconds] = useState(DEFAULT_SESSION_SECONDS);
       const [sheet, setSheet] = useState(false);
 
       const openSheet = () => setSheet(true);
+      const toggleTimer = () => {
+        if (remainingSeconds <= 0) {
+          setTotalSeconds(DEFAULT_SESSION_SECONDS);
+          setRemainingSeconds(DEFAULT_SESSION_SECONDS);
+          setRunning(true);
+          return;
+        }
+
+        setRunning((value) => !value);
+      };
       const applySheet = () => {
         setSheet(false);
+        setTotalSeconds(AI_SESSION_SECONDS);
+        setRemainingSeconds(AI_SESSION_SECONDS);
         setRunning(true);
         setTab('focus');
       };
 
+      useEffect(() => {
+        if (!running) return undefined;
+
+        const timerId = window.setInterval(() => {
+          setRemainingSeconds((value) => {
+            if (value <= 1) {
+              window.clearInterval(timerId);
+              setRunning(false);
+              return 0;
+            }
+
+            return value - 1;
+          });
+        }, 1000);
+
+        return () => window.clearInterval(timerId);
+      }, [running]);
+
       let screen;
       if (tab === 'plan') screen = <PlanScreen theme={theme} openSheet={openSheet} />;
       else if (tab === 'insight') screen = <InsightScreen theme={theme} />;
-      else if (theme.id === 'hara') screen = <HaraFocus running={running} setRunning={setRunning} openSheet={openSheet} />;
-      else if (theme.id === 'maeda') screen = <MaedaFocus running={running} setRunning={setRunning} openSheet={openSheet} />;
-      else screen = <AicherFocus running={running} setRunning={setRunning} openSheet={openSheet} />;
+      else if (theme.id === 'hara') screen = <HaraFocus running={running} remainingSeconds={remainingSeconds} totalSeconds={totalSeconds} onTimerToggle={toggleTimer} openSheet={openSheet} />;
+      else if (theme.id === 'maeda') screen = <MaedaFocus running={running} remainingSeconds={remainingSeconds} totalSeconds={totalSeconds} onTimerToggle={toggleTimer} openSheet={openSheet} />;
+      else screen = <AicherFocus running={running} remainingSeconds={remainingSeconds} totalSeconds={totalSeconds} onTimerToggle={toggleTimer} openSheet={openSheet} />;
 
       return (
         <IosFrame darkMode={theme.dark} battery={theme.id === 'maeda' ? 91 : 88}>
