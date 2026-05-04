@@ -1,13 +1,13 @@
-const CACHE_NAME = 'tasman-pomodoro-prototype-v3';
+const CACHE_NAME = 'tasman-pomodoro-prototype-v4';
 const APP_SHELL = [
   './index.html',
   './manifest.webmanifest',
   './app-icon.svg',
   './app-icon-180.png',
   './app-icon-512.png',
-  'https://unpkg.com/react@18.2.0/umd/react.development.js',
-  'https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js',
-  'https://unpkg.com/@babel/standalone@7.24.7/babel.min.js'
+  './vendor/react.production.min.js',
+  './vendor/react-dom.production.min.js',
+  './vendor/babel.min.js'
 ];
 
 self.addEventListener('install', (event) => {
